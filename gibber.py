@@ -7,22 +7,25 @@ import requests
 from rich.console import Console
 from rich.table import Table
 from datetime import datetime
+import os.path
 
-feeds = [
-    "https://itsfoss.com/feed/",
-    "https://www.theverge.com/tech/rss/index.xml",
-    "https://www.warhammer-community.com/feed/",
-    "https://www.goonhammer.com/feed/"
-         ]
+feeds = None
 
-def get_rss_data():
+def read_feed_file():
+    with open(os.path.join(os.path.dirname(__file__), 'feeds.txt'), 'r') as file:
+        global feeds
+        feeds = file.read().splitlines()
+
+def get_rss_data(feeds):
     headlines = {}
+    headers = {'User-Agent': 'Mozilla/5.0 (X11; Linux; rv:74.0) Gecko/20100101 Firefox/74.0'}
 
     for f in feeds:
-        response = requests.get(f)
-        soup = BeautifulSoup(response.content, 'xml')
-        articles = soup.find_all(['item', 'entry'], limit = 5)
-        headlines[soup.find('title').text] = articles
+        response = requests.get(f, headers=headers)
+        if response.status_code != 404:
+            soup = BeautifulSoup(response.content, 'xml')
+            articles = soup.find_all(['item', 'entry'], limit = 5)
+            headlines[soup.find('title').text] = articles
 
     return headlines
 
@@ -49,10 +52,7 @@ def print_table(site_title, todays_date, data):
     console = Console()
     console.print(table)
 
-def test_print_articles(article_data):
-    for a in article_data:
-        print(article_data[a])
-
 if __name__ == "__main__":
-    article_data = get_rss_data()
+    read_feed_file()
+    article_data = get_rss_data(feeds)
     rprint_articles(article_data)
